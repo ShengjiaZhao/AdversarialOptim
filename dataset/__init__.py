@@ -5,3 +5,4 @@ from .dataset_cifar import CifarDataset
 from .dataset_mnist import MnistDataset
 from .dataset_svhn import SVHNDataset
 from .dataset_lsun import LSUNDataset
+from .dataset_random import RandomDataset
