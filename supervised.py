@@ -1,25 +1,19 @@
 from dataset import *
 from abstract_network import *
 import time
+import argparse
+from models import *
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-g', '--gpu', type=str, default='3', help='GPU to use')
+parser.add_argument('-z', '--z_dim', type=int, default=12, help='z dimension')
+args = parser.parse_args()
 
 
-def generator(z, reuse=False):
-    with tf.variable_scope('g_net') as vs:
-        if reuse:
-            vs.reuse_variables()
-        fc = fc_relu(z, 1024)
-        fc = fc_relu(fc, 7*7*128)
-        fc = tf.reshape(fc, tf.stack([tf.shape(fc)[0], 7, 7, 128]))
-        conv = conv2d_t_relu(fc, 64, 4, 2)
-        conv = conv2d_t_relu(conv, 64, 4, 1)
-        output = tf.contrib.layers.convolution2d_transpose(conv, 1, 4, 2, activation_fn=tf.sigmoid)
-        return output
-
-
-z_dim = 12
+z_dim = args.z_dim
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 batch_size = 100
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
-name = 'supervised_gen2/%d' % z_dim
+name = 'supervised_gen/%d' % z_dim
 dataset = RandomDataset(size=2 ** z_dim, one_hot=False)
 
 z = tf.placeholder(tf.float32, [None, z_dim])
@@ -42,16 +36,9 @@ eval_summary = tf.summary.merge([
     create_display(tf.reshape(x, [100]+dataset.data_dims), 'train_samples')
 ])
 
-
-def make_model_path(model_path):
-    import subprocess
-    if os.path.isdir(model_path):
-        subprocess.call(('rm -rf %s' % model_path).split())
-    os.makedirs(model_path)
-
-
 model_path = "log/%s" % name
 make_model_path(model_path)
+logger = open(os.path.join(model_path, 'result.txt'), 'w')
 sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
 summary_writer = tf.summary.FileWriter(model_path)
 sess.run(tf.global_variables_initializer())
@@ -71,6 +58,8 @@ while True:
         bz = (np.random.normal(0, 1, [batch_size, z_dim]) > 0).astype(np.float)
         samples = sess.run(g, feed_dict={z: bz})
         sample_match, sample_dist = dataset.compare(samples)
+        logger.write('%d %.3f\n' % (idx, sample_match))
+        logger.flush()
         summary_val = sess.run(eval_summary,
                                feed_dict={sample_match_ph: sample_match, sample_dist_ph: sample_dist, x: bx, z: bz})
         summary_writer.add_summary(summary_val, idx)

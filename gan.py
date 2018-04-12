@@ -1,31 +1,13 @@
 from dataset import *
 from abstract_network import *
 import time
+from models import *
+import argparse
 
-
-def generator(z, reuse=False):
-    with tf.variable_scope('g_net') as vs:
-        if reuse:
-            vs.reuse_variables()
-        fc1 = fc_relu(z, 1024)
-        fc2 = fc_relu(fc1, 7*7*128)
-        fc2 = tf.reshape(fc2, tf.stack([tf.shape(fc2)[0], 7, 7, 128]))
-        conv1 = conv2d_t_relu(fc2, 64, 4, 2)
-        output = tf.contrib.layers.convolution2d_transpose(conv1, 1, 4, 2, activation_fn=tf.sigmoid)
-        return output
-
-
-def discriminator(x, reuse=False):
-    with tf.variable_scope('d_net') as vs:
-        if reuse:
-            vs.reuse_variables()
-        conv1 = conv2d_lrelu(x, 64, 4, 2)
-        conv2 = conv2d_lrelu(conv1, 128, 4, 2)
-        conv2 = tf.reshape(conv2, [-1, np.prod(conv2.get_shape().as_list()[1:])])
-        fc1 = fc_lrelu(conv2, 1024)
-        fc2 = tf.contrib.layers.fully_connected(fc1, 1, activation_fn=tf.identity)
-        return fc2
-
+parser = argparse.ArgumentParser()
+parser.add_argument('-g', '--gpu', type=str, default='3', help='GPU to use')
+parser.add_argument('-z', '--z_dim', type=int, default=12, help='z dimension')
+args = parser.parse_args()
 
 z_dim = 12
 batch_size = 100
@@ -85,14 +67,6 @@ eval_summary = tf.summary.merge([
     create_display(tf.reshape(g, [100]+dataset.data_dims), 'samples'),
     create_display(tf.reshape(x, [100]+dataset.data_dims), 'train_samples')
 ])
-
-
-def make_model_path(model_path):
-    import subprocess
-    if os.path.isdir(model_path):
-        subprocess.call(('rm -rf %s' % model_path).split())
-    os.makedirs(model_path)
-
 
 model_path = "log/%s" % name
 make_model_path(model_path)

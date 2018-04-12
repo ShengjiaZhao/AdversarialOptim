@@ -145,6 +145,7 @@ class CifarDataset(Dataset):
         self.train_batch_ptr = 0
         self.test_batch_ptr = 0
 
+
 if __name__ == '__main__':
     # dataset = CifarDataset()
     # images, labels = dataset.next_labeled_batch(100)

@@ -112,6 +112,7 @@ class CelebADataset(Dataset):
 
 
 if __name__ == '__main__':
+    from maptlotlib import pyplot as plt
     dataset = CelebADataset()
     while True:
         batch = dataset.next_batch(100)

@@ -2,9 +2,6 @@ import tensorflow as tf
 import numpy as np
 import math
 import glob
-from matplotlib import pyplot as plt
-from matplotlib.patches import Ellipse
-from tensorflow.examples.tutorials.mnist import input_data
 import os, sys, shutil, re
 
 def lrelu(x, rate=0.1):
@@ -14,6 +11,13 @@ def lrelu(x, rate=0.1):
 conv2d = tf.contrib.layers.convolution2d
 conv2d_t = tf.contrib.layers.convolution2d_transpose
 fc_layer = tf.contrib.layers.fully_connected
+
+
+def make_model_path(model_path):
+    import subprocess
+    if os.path.isdir(model_path):
+        subprocess.call(('rm -rf %s' % model_path).split())
+    os.makedirs(model_path)
 
 
 def conv2d_bn_lrelu(inputs, num_outputs, kernel_size, stride):
