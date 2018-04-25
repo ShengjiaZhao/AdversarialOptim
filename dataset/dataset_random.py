@@ -4,8 +4,9 @@ else:
     from .abstract_dataset import *
 from sklearn.neighbors import NearestNeighbors
 
+
 class RandomDataset(Dataset):
-    def __init__(self, size=10000, dim=(28, 28, 1), one_hot=False):
+    def __init__(self, size=10000, dim=(28, 28, 1), one_hot=False, binary=True):
         Dataset.__init__(self)
         self.name = "mnist"
         self.data_dims = list(dim)
@@ -14,10 +15,12 @@ class RandomDataset(Dataset):
         self.range = [0.0, 1.0]
         self.train_data = np.random.normal(loc=0, scale=1.0, size=[size] + self.data_dims)
         self.train_data = 1 / (1 + np.exp(-self.train_data))
+        if binary:
+            self.train_data = (self.train_data > 0.5).astype(np.int)
         if one_hot:
             self.labels = np.arange(0, self.train_size)
         else:
-            bits = int(math.ceil(math.log2(size)))
+            bits = int(math.ceil(math.log(size, 2)))
             self.labels = np.array([[int(j) for j in ('{0:0%db}' % bits).format(i)] for i in range(self.train_size)])
         self.test_data = self.train_data
         self.train_ptr = 0
@@ -55,11 +58,19 @@ class RandomDataset(Dataset):
         distances, indices = self.nbrs.kneighbors(np.reshape(images, newshape=[-1, np.prod(self.data_dims)]))
         return np.mean(distances), distances.flatten()
 
+    def diversity(self, images):
+        nbrs = NearestNeighbors(n_neighbors=2, algorithm='ball_tree').fit(
+            np.reshape(images, newshape=[-1, np.prod(self.data_dims)])
+        )
+        distances, indices = nbrs.kneighbors(np.reshape(images, newshape=[-1, np.prod(self.data_dims)]))
+        return np.mean(distances[:, 1]), distances[:, 1].flatten()
+
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
+    import time
     one_hot = False
-    dataset = RandomDataset(size=50, one_hot=one_hot)
+    dataset = RandomDataset(size=5000, one_hot=one_hot, binary=True)
     for i in range(2):
         sample, label = dataset.next_labeled_batch(30)
         for index in range(30):
@@ -72,4 +83,11 @@ if __name__ == '__main__':
         print(dataset.compare(sample)[0])
     plt.gcf().set_size_inches(10, 10)
     plt.tight_layout()
+    plt.show()
+
+    start_time = time.time()
+    distance, dist = dataset.diversity(dataset.train_data)
+    elapsed_time = time.time() - start_time
+    print("Time used %.2f, distance=%.2f" % (elapsed_time, distance))
+    plt.hist(dist, bins=20)
     plt.show()
